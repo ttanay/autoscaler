@@ -93,6 +93,7 @@ func (container *ContainerState) addCPUSample(sample *ContainerUsageSample) bool
 	return true
 }
 
+// Simple sanity check
 func (container *ContainerState) observeQualityMetrics(usage ResourceAmount, isOOM bool, resource corev1.ResourceName) {
 	if !container.aggregator.NeedsRecommendation() {
 		return

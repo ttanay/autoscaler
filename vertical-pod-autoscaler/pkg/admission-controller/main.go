@@ -71,10 +71,12 @@ var (
 )
 
 func main() {
+	// Init
 	klog.InitFlags(nil)
 	kube_flag.InitFlags()
 	klog.V(1).Infof("Vertical Pod Autoscaler %s Admission Controller", common.VerticalPodAutoscalerVersion)
 
+	// Setup health check and metrics
 	healthCheck := metrics.NewHealthCheck(time.Minute, false)
 	metrics.Initialize(*address, healthCheck)
 	metrics_admission.Register()
@@ -82,20 +84,28 @@ func main() {
 	certs := initCerts(*certsConfiguration)
 	config := common.CreateKubeConfigOrDie(*kubeconfig, float32(*kubeApiQps), int(*kubeApiBurst))
 
+	// Setup the target selector fetcher to list-watch pods
 	vpaClient := vpa_clientset.NewForConfigOrDie(config)
 	vpaLister := vpa_api_util.NewVpasLister(vpaClient, make(chan struct{}), *vpaObjectNamespace)
 	kubeClient := kube_client.NewForConfigOrDie(config)
 	factory := informers.NewSharedInformerFactory(kubeClient, defaultResyncPeriod)
 	targetSelectorFetcher := target.NewVpaTargetSelectorFetcher(config, kubeClient, factory)
-	podPreprocessor := pod.NewDefaultPreProcessor()
-	vpaPreprocessor := vpa.NewDefaultPreProcessor()
+
+	// Add default preprocessors.
+	podPreprocessor := pod.NewDefaultPreProcessor() // No-op
+	vpaPreprocessor := vpa.NewDefaultPreProcessor() // No-op
+
 	var limitRangeCalculator limitrange.LimitRangeCalculator
 	limitRangeCalculator, err := limitrange.NewLimitsRangeCalculator(factory)
 	if err != nil {
 		klog.Errorf("Failed to create limitRangeCalculator, falling back to not checking limits. Error message: %s", err)
 		limitRangeCalculator = limitrange.NewNoopLimitsCalculator()
 	}
-	recommendationProvider := recommendation.NewProvider(limitRangeCalculator, vpa_api_util.NewCappingRecommendationProcessor(limitRangeCalculator))
+	recommendationProvider := recommendation.NewProvider(
+		limitRangeCalculator,
+		vpa_api_util.NewCappingRecommendationProcessor(limitRangeCalculator)
+	)
+	// Gets the matching VPA for a pod object
 	vpaMatcher := vpa.NewMatcher(vpaLister, targetSelectorFetcher)
 
 	hostname, err := os.Hostname()
@@ -118,9 +128,11 @@ func main() {
 	defer close(stopCh)
 
 	calculators := []patch.Calculator{patch.NewResourceUpdatesCalculator(recommendationProvider), patch.NewObservedContainersCalculator()}
-	as := logic.NewAdmissionServer(podPreprocessor, vpaPreprocessor, limitRangeCalculator, vpaMatcher, calculators)
+	as := logic.NewAdmissionServer(
+		podPreprocessor, vpaPreprocessor, limitRangeCalculator, vpaMatcher, calculators
+	)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		as.Serve(w, r)
+		as.Serve(w, r) // Simply calls the #admit method
 		healthCheck.UpdateLastActivity()
 	})
 	clientset := getClient()

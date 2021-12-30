@@ -40,11 +40,13 @@ type AdmissionServer struct {
 }
 
 // NewAdmissionServer constructs new AdmissionServer
-func NewAdmissionServer(podPreProcessor pod.PreProcessor,
+func NewAdmissionServer(
+	podPreProcessor pod.PreProcessor,
 	vpaPreProcessor vpa.PreProcessor,
 	limitsChecker limitrange.LimitRangeCalculator,
 	vpaMatcher vpa.Matcher,
-	patchCalculators []patch.Calculator) *AdmissionServer {
+	patchCalculators []patch.Calculator,
+) *AdmissionServer {
 	as := &AdmissionServer{limitsChecker, map[metav1.GroupResource]resource.Handler{}}
 	as.RegisterResourceHandler(pod.NewResourceHandler(podPreProcessor, vpaMatcher, patchCalculators))
 	as.RegisterResourceHandler(vpa.NewResourceHandler(vpaPreProcessor))
@@ -56,7 +58,11 @@ func (s *AdmissionServer) RegisterResourceHandler(resourceHandler resource.Handl
 	s.resourceHandlers[resourceHandler.GroupResource()] = resourceHandler
 }
 
-func (s *AdmissionServer) admit(data []byte) (*v1.AdmissionResponse, metrics_admission.AdmissionStatus, metrics_admission.AdmissionResource) {
+func (s *AdmissionServer) admit(data []byte) (
+	*v1.AdmissionResponse,
+	metrics_admission.AdmissionStatus,
+	metrics_admission.AdmissionResource
+) {
 	// we don't block the admission by default, even on unparsable JSON
 	response := v1.AdmissionResponse{}
 	response.Allowed = true

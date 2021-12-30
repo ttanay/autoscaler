@@ -63,9 +63,13 @@ func NewMetricsClient(metricsGetter resourceclient.PodMetricsesGetter, namespace
 }
 
 func (c *metricsClient) GetContainersMetrics() ([]*ContainerMetricsSnapshot, error) {
+	// This is a 1-D array that has the metrics snapshots for all containers in the
+	// cluster. The pod that they belong to is stored in the snapshot.
 	var metricsSnapshots []*ContainerMetricsSnapshot
 
 	podMetricsInterface := c.metricsGetter.PodMetricses(c.namespace)
+	// If the metav1.ListOptions{} is an empty struct here, does this mean that it
+	// will list out all the pods in the cluster?
 	podMetricsList, err := podMetricsInterface.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err

@@ -117,6 +117,7 @@ type vpaTargetSelectorFetcher struct {
 	informersMap    map[wellKnownController]cache.SharedIndexInformer
 }
 
+// Fetch the label selector that the given VPA object controls
 func (f *vpaTargetSelectorFetcher) Fetch(vpa *vpa_types.VerticalPodAutoscaler) (labels.Selector, error) {
 	if vpa.Spec.TargetRef == nil {
 		return nil, fmt.Errorf("targetRef not defined. If this is a v1beta1 object switch to v1beta2.")
@@ -146,6 +147,9 @@ func (f *vpaTargetSelectorFetcher) Fetch(vpa *vpa_types.VerticalPodAutoscaler) (
 	return selector, nil
 }
 
+// Fetches the TargetRef object by its TargetRef.Kind and TargetRef.name fields
+// and returns the label selectors that the object uses to refer to the pods that
+// are controlled by it.
 func getLabelSelector(informer cache.SharedIndexInformer, kind, namespace, name string) (labels.Selector, error) {
 	obj, exists, err := informer.GetStore().GetByKey(namespace + "/" + name)
 	if err != nil {

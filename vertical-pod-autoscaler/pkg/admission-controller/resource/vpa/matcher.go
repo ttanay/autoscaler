@@ -45,16 +45,22 @@ func NewMatcher(vpaLister vpa_lister.VerticalPodAutoscalerLister,
 }
 
 func (m *matcher) GetMatchingVPA(pod *core.Pod) *vpa_types.VerticalPodAutoscaler {
+	// List all VPA configs in the namespace of the given pod
 	configs, err := m.vpaLister.VerticalPodAutoscalers(pod.Namespace).List(labels.Everything())
 	if err != nil {
 		klog.Errorf("failed to get vpa configs: %v", err)
 		return nil
 	}
+
 	onConfigs := make([]*vpa_api_util.VpaWithSelector, 0)
+
+	// Iterate on all VPA configs to get their corresponding label selectors
 	for _, vpaConfig := range configs {
+		// Disacard VPAs with UpdateMode == Off
 		if vpa_api_util.GetUpdateMode(vpaConfig) == vpa_types.UpdateModeOff {
 			continue
 		}
+
 		selector, err := m.selectorFetcher.Fetch(vpaConfig)
 		if err != nil {
 			klog.V(3).Infof("skipping VPA object %v because we cannot fetch selector: %s", vpaConfig.Name, err)
@@ -65,6 +71,8 @@ func (m *matcher) GetMatchingVPA(pod *core.Pod) *vpa_types.VerticalPodAutoscaler
 			Selector: selector,
 		})
 	}
+
+
 	klog.V(2).Infof("Let's choose from %d configs for pod %s/%s", len(onConfigs), pod.Namespace, pod.Name)
 	result := vpa_api_util.GetControllingVPAForPod(pod, onConfigs)
 	if result != nil {

@@ -82,6 +82,7 @@ func (h *resourceHandler) GetPatches(ar *admissionv1.AdmissionRequest) ([]resour
 		klog.V(4).Infof("No matching VPA found for pod %s/%s", pod.Namespace, pod.Name)
 		return []resource_admission.PatchRecord{}, nil
 	}
+	// This is a no-op, right?
 	pod, err := h.preProcessor.Process(pod)
 	if err != nil {
 		return nil, err
@@ -92,6 +93,7 @@ func (h *resourceHandler) GetPatches(ar *admissionv1.AdmissionRequest) ([]resour
 		patches = append(patches, patch.GetAddEmptyAnnotationsPatch())
 	}
 	for _, c := range h.patchCalculators {
+		// Calculate the patch w.r.t to the controlling VPA
 		partialPatches, err := c.CalculatePatches(&pod, controllingVpa)
 		if err != nil {
 			return []resource_admission.PatchRecord{}, err

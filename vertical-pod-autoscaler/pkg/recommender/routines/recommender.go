@@ -104,6 +104,12 @@ func (r *recommender) UpdateVPAs() {
 		if !found {
 			continue
 		}
+		// START_HERE/CHECKPOINT
+		// Q: If the AggregateContainerState is per container, and the
+		// ContainerNameToAggregateStateMap is keyed by container, then why is
+		// the a `vpa` object passed here? Is it that it is a multi-map, or is the
+		// value an array of AggregateContainerState objects?
+		// Each VPA's recommendation is an aggregate for the containers
 		resources := r.podResourceRecommender.GetRecommendedPodResources(GetContainerNameToAggregateStateMap(vpa))
 		had := vpa.HasRecommendation()
 		vpa.UpdateRecommendation(getCappedRecommendation(vpa.ID, resources, observedVpa.Spec.ResourcePolicy))
@@ -189,6 +195,12 @@ func (r *recommender) RunOnce() {
 	r.clusterStateFeeder.LoadPods()
 	timer.ObserveStep("LoadPods")
 
+	// Q: Is a new recommender spun up for every VPA object?
+	// If so, they will redundantly update the cluster state for ALL containers
+	// in the cluster.
+	/// NO, run once for the entire cluster
+	// Updates the ClusterState object with the metrics snapshots of all containers
+	// in the cluster
 	r.clusterStateFeeder.LoadRealTimeMetrics()
 	timer.ObserveStep("LoadMetrics")
 	klog.V(3).Infof("ClusterState is tracking %v PodStates and %v VPAs", len(r.clusterState.Pods), len(r.clusterState.Vpas))

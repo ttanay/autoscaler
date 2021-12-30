@@ -435,6 +435,8 @@ func (feeder *clusterStateFeeder) LoadPods() {
 	}
 }
 
+// Is there a way to avoid an OOM here?
+// Eg: create a channel with samples and stream it into the model updating logic
 func (feeder *clusterStateFeeder) LoadRealTimeMetrics() {
 	containersMetrics, err := feeder.metricsClient.GetContainersMetrics()
 	if err != nil {
